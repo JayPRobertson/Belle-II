@@ -1,3 +1,14 @@
+'''
+Creates a drift chamber with a single drift cell.
+
+Creates 1000 randomly generated tracks through the drift tube and writes out the
+track number, track start position and angle, electron drift time of each track, drift line
+starting position along the track, and number of driftlines for each to:
+"multitrack_data_file.csv"
+
+Gas file must be changed by CL arg. Run with: "run_randtrack.sh"
+'''
+
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
@@ -190,6 +201,7 @@ int main(int argc, char* argv[]) {
     sensor.ClearSignal();
     track.NewTrack(x, y, 0., 0., dx, dy, 0.); 
     
+    // Drift information about all drift lines on track j
     std::string driftTimesStr = "";
     std::string dlineStartX = "";
     std::string dlineStartY = "";
@@ -236,6 +248,7 @@ int main(int argc, char* argv[]) {
    // Close csv file
     trackFile.close(); 
 
+  // Disable plotting so can be run with sh file
   //app.Run(kTRUE);
 
 }

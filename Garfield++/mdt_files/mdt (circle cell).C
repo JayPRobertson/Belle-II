@@ -1,13 +1,21 @@
+'''
+Creates a drift chamber with wires generated in a circular pattern around the origin
+and plots the resulting drift lines for one vertical track.
+
+Gas file must be changed manually.
+'''
+
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
 #include <string>
 #include <cstdio>
-#include <cmath>
 
 #include <TCanvas.h>
 #include <TROOT.h>
 #include <TApplication.h>
+#include "TMath.h"
+#include <cmath>
 
 #include "Garfield/ViewDrift.hh"
 #include "Garfield/ComponentAnalyticField.hh"
@@ -19,6 +27,8 @@
 #include "Garfield/ViewField.hh"
 #include "Garfield/ViewCell.hh"
 
+#define _USE_MATH_DEFINES
+
 using namespace Garfield;
 
 auto response = [](double t) {
@@ -27,6 +37,14 @@ auto response = [](double t) {
     
   return (t/tau) * std::exp(-t/tau);
 };
+
+double getX(double r, double phi){
+  return r * TMath::Cos(phi);
+}
+
+double getY(double r, double phi){
+  return r * TMath::Sin(phi);
+}
 
 bool readTransferFunction(Sensor& sensor) {
 
@@ -71,52 +89,98 @@ int main(int argc, char * argv[]) {
   ComponentAnalyticField cmp;
   cmp.SetMedium(&gas);
   
-  // Wire Info 
-  const double rWire = 25.e-4; //[cm]
-  const double lWire = 200.; 
-  const double TWire = 50.;    //[g]
-  const double TGround = 80.;
+  // Wire radius [cm]
+  const double rWire = 25.e-4;
   
   // Outer radius of the tube [cm]
-  const double rTube = 0.91;
+  const double rTube = 0.71;
   
   // Voltages
   const double vWire = 2730.;
   const double vTube = 0.;
   const double vGround = 0.;
   
-  int gCount = 1;
-  int sCount = 1;
-  double xpos;
-  double ypos = 0.9;
-  
-  // Add 3x3 grid of drift cells
-  for (int i = 0; i < 7; i++){    //column
-    xpos = 0.9;
-    
-    for (int j = 0; j < 7; j++){  //row
-      if (!(i%2) || !(j%2)){
-        cmp.AddWire(xpos, ypos, 2 * rWire, vGround, "g" + std::to_string(gCount), lWire, TGround);
-        gCount += 1;
-      }else{
-        cmp.AddWire(xpos, ypos, 2 * rWire, vWire, "s" + std::to_string(sCount), lWire, TWire);
-        sCount += 1;
-      }
-      xpos -= 0.3;
-    }
-    ypos -= 0.3;
-  }
-  
   // Add the tube.
   cmp.AddTube(rTube, vTube, 0);
   
+  // Constants
+  const double pi = M_PI;
+  
+  double r1 = rTube/4;
+  double r2 = rTube/8;
+  int ringCount = 0;
+  bool isFirst = true;
+  
+  double theta1;
+  double theta2;
+  double phi1;
+  double phi2;
+    
+  int countSense = 0;
+  int countGround = 0;
+  
+  std::string sense = "s";
+  std::string ground = "g";
+   
+  // Plot rings of wires.
+  while (r1 < rTube){
+      theta1 = 0;
+      theta2 = pi/8;
+      
+      if (isFirst){
+        isFirst = false;
+        for (int i=0; i<16; i++){
+          countGround += 1;
+          cmp.AddWire(getX(rTube/8, theta1), getY(rTube/8, theta1), \
+            2 * rWire, vGround, ground + std::to_string(countGround));
+          theta1 += pi/8;
+        }
+        r2 += rTube/4;
+        continue;
+      }
+
+    for (int i=0; i<=8; i++){ 
+        if (!(ringCount % 2)){
+          phi1 = theta1;
+          phi2 = theta2;
+        } else{
+          phi1 = theta2;
+          phi2 = theta1;
+        }
+        theta1 += pi/4;
+        theta2 += pi/4;
+        
+        // Add sense wire
+        countSense += 1;
+        cmp.AddWire(getX(r1, phi1), getY(r1, phi1), \
+            2 * rWire, vWire, sense + std::to_string(countSense));
+        
+        // Add ground wires
+        countGround += 1;
+        cmp.AddWire(getX(r1, phi2), getY(r1, phi2), \
+            2 * rWire, vGround, ground + std::to_string(countGround));
+        countGround += 1;
+        cmp.AddWire(getX(r2, phi1), getY(r2, phi1), \
+            2 * rWire, vGround, ground + std::to_string(countGround));
+        countGround += 1;
+        cmp.AddWire(getX(r2, phi2), getY(r2, phi2), \
+            2 * rWire, vGround, ground + std::to_string(countGround));
+    }
+    ringCount += 1;
+    r1 += rTube/4;
+    r2 += rTube/4;
+  }
+  
   // Turn on mgnetic field
-  cmp.SetMagneticField(0., 0., 1.5);
+  // cmp.SetMagneticField(0., 0., 1.5);
 
   // Make a sensor.
   Sensor sensor;
   sensor.AddComponent(&cmp);
-  sensor.AddElectrode(&cmp, "s");
+  
+  for (int i=1; i<countSense+1; i++){
+    sensor.AddElectrode(&cmp, sense + std::to_string(i));
+  }
   
   // Set the signal time window.
   const double tstep = 0.5;
@@ -138,8 +202,7 @@ int main(int argc, char * argv[]) {
   DriftLineRKF drift(&sensor);
   drift.SetGainFluctuationsPolya(10., 20000.); // 10. = 10 ns
   
-  //std::vector<std::array<double, 3>> points;
-  
+  // Set up plotting of particles.
   TCanvas* cD = nullptr;
   ViewDrift driftView;
   constexpr bool plotDrift = true;
@@ -149,43 +212,27 @@ int main(int argc, char * argv[]) {
     drift.EnablePlotting(&driftView);
     track.EnablePlotting(&driftView);
   }
- 
+
+  // Set up plotting of signal.
   TCanvas* cS = nullptr;
   constexpr bool plotSignal = true;
   if (plotSignal) cS = new TCanvas("cS", "Signal", 600, 600);
 
+  // Make straight vertical track.
   const double rTrack = 0.1;
   const double x0 = rTrack;
   const double y0 = -sqrt(rTube * rTube - rTrack * rTrack);
   
   track.NewTrack(x0, y0, 0, 0, 0, 1, 0);
   
+  // Get drift lines from clusters.
   for (const auto& cluster : track.GetClusters()) {
     for (const auto& electron : cluster.electrons) {
       drift.DriftElectron(electron.x, electron.y, electron.z, electron.t);
-      //points.push_back({electron.x, electron.y, electron.z});
-   
     }
   }
   
-  //// Add second track
-  //TrackHeed track2;
-  //track2.SetParticle("muon");
-  //track2.SetEnergy(170.e9);
-  //track2.SetSensor(&sensor);
-  
-  //track2.EnablePlotting(&driftView);
-  //track2.NewTrack(-x0, y0, 0, 0, 0, 1, 0);
-  
-  //for (const auto& cluster : track2.GetClusters()) {
-    //for (const auto& electron : cluster.electrons) {
-      //drift.DriftElectron(electron.x, electron.y, electron.z, electron.t);
-      //points.push_back({electron.x, electron.y, electron.z});
-   
-    //}
-  //}
-
-  
+  // Plot track, drift lines, wires, and tube.
   if (plotDrift) {
     cD->Clear();
     cmp.PlotCell(cD);

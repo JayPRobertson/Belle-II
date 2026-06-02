@@ -1,8 +1,16 @@
+'''
+Creates a drift chamber with a 3x3 grid of drift cells and plots the 
+resulting drift lines for one or two vertical tracks.
+
+Gas file must be changed manually.
+'''
+
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
 #include <string>
 #include <cstdio>
+#include <cmath>
 
 #include <TCanvas.h>
 #include <TROOT.h>
@@ -70,29 +78,41 @@ int main(int argc, char * argv[]) {
   ComponentAnalyticField cmp;
   cmp.SetMedium(&gas);
   
-  // Wire radius [cm]
-  const double rWire = 25.e-4;
+  // Wire Info 
+  const double rWire = 25.e-4; //[cm]
+  const double lWire = 200.; 
+  const double TWire = 50.;    //[g]
+  const double TGround = 80.;
   
   // Outer radius of the tube [cm]
-  const double rTube = 0.71;
+  const double rTube = 0.91;
   
   // Voltages
   const double vWire = 2730.;
   const double vTube = 0.;
   const double vGround = 0.;
   
-  // Add drift cell
-  cmp.AddWire(0, 0, 2 * rWire, vWire, "s");
+  int gCount = 1;
+  int sCount = 1;
+  double xpos;
+  double ypos = 0.9;
   
-  cmp.AddWire(0.3, 0.3, 2 * rWire, vGround, "g1");
-  cmp.AddWire(-0.3, 0.3, 2 * rWire, vGround, "g2");
-  cmp.AddWire(-0.3, -0.3, 2 * rWire, vGround, "g3");
-  cmp.AddWire(0.3, -0.3, 2 * rWire, vGround, "g4");
-  
-  cmp.AddWire(0, 0.3, 2 * rWire, vGround, "g5");
-  cmp.AddWire(0, -0.3, 2 * rWire, vGround, "g6");
-  cmp.AddWire(-0.3, 0, 2 * rWire, vGround, "g7");
-  cmp.AddWire(0.3, 0, 2 * rWire, vGround, "g8");
+  // Add 3x3 grid of drift cells.
+  for (int i = 0; i < 7; i++){    //column
+    xpos = 0.9;
+    
+    for (int j = 0; j < 7; j++){  //row
+      if (!(i%2) || !(j%2)){
+        cmp.AddWire(xpos, ypos, 2 * rWire, vGround, "g" + std::to_string(gCount), lWire, TGround);
+        gCount += 1;
+      }else{
+        cmp.AddWire(xpos, ypos, 2 * rWire, vWire, "s" + std::to_string(sCount), lWire, TWire);
+        sCount += 1;
+      }
+      xpos -= 0.3;
+    }
+    ypos -= 0.3;
+  }
   
   // Add the tube.
   cmp.AddTube(rTube, vTube, 0);
@@ -114,24 +134,18 @@ int main(int argc, char * argv[]) {
   // Set the delta reponse function.
   if (!readTransferFunction(sensor)) return 0;
   sensor.ClearSignal();
-
+  
   // Set up Heed.
   TrackHeed track;
   track.SetParticle("muon");
   track.SetEnergy(170.e9);
   track.SetSensor(&sensor);
-  
-  TrackHeed track2;
-  track2.SetParticle("muon");
-  track2.SetEnergy(170.e9);
-  track2.SetSensor(&sensor);
 
   // RKF integration.
   DriftLineRKF drift(&sensor);
   drift.SetGainFluctuationsPolya(10., 20000.); // 10. = 10 ns
   
-  std::vector<std::array<double, 3>> points;
-  
+  // Set up plotting of particles.
   TCanvas* cD = nullptr;
   ViewDrift driftView;
   constexpr bool plotDrift = true;
@@ -140,38 +154,46 @@ int main(int argc, char * argv[]) {
     driftView.SetCanvas(cD);
     drift.EnablePlotting(&driftView);
     track.EnablePlotting(&driftView);
-    track2.EnablePlotting(&driftView);
   }
  
+  // Set up plotting of signal.
   TCanvas* cS = nullptr;
   constexpr bool plotSignal = true;
   if (plotSignal) cS = new TCanvas("cS", "Signal", 600, 600);
 
-  const double rTrack = 0.25;
+  // Make straight vertical track.
+  const double rTrack = 0.1;
   const double x0 = rTrack;
   const double y0 = -sqrt(rTube * rTube - rTrack * rTrack);
   
-  sensor.ClearSignal();
   track.NewTrack(x0, y0, 0, 0, 0, 1, 0);
-  track2.NewTrack(0.1, y0, 0, 0, 0, 1, 0);
   
+  // Get drift lines from clusters.
   for (const auto& cluster : track.GetClusters()) {
     for (const auto& electron : cluster.electrons) {
       drift.DriftElectron(electron.x, electron.y, electron.z, electron.t);
-      points.push_back({electron.x, electron.y, electron.z});
-   
     }
   }
+  
+  // Add second track
+  '''
+  TrackHeed track2;
+  track2.SetParticle("muon");
+  track2.SetEnergy(170.e9);
+  track2.SetSensor(&sensor);
+  
+  track2.EnablePlotting(&driftView);
+  track2.NewTrack(-x0, y0, 0, 0, 0, 1, 0);
   
   for (const auto& cluster : track2.GetClusters()) {
     for (const auto& electron : cluster.electrons) {
       drift.DriftElectron(electron.x, electron.y, electron.z, electron.t);
-      points.push_back({electron.x, electron.y, electron.z});
    
     }
   }
+  '''
 
-  
+  // Plot track, drift lines, wires, and tube.
   if (plotDrift) {
     cD->Clear();
     cmp.PlotCell(cD);
@@ -180,33 +202,9 @@ int main(int argc, char * argv[]) {
     driftView.Plot(twod, drawaxis);
   }
   
-  sensor.ConvoluteSignals();
-  int nt = 0;
-  if (sensor.ComputeThresholdCrossings(-2., "s", nt)){
-    if (plotSignal) sensor.PlotSignal("s", cS);
-  }
-
-  
   // Print number of drift lines
   const std::size_t nDriftLines = driftView.GetNumberOfDriftLines();
   std::cout << "Number of drift lines: " << nDriftLines << std::endl;
-  
-  //// Plot isochrons along track
-  //ViewIsochrons viewIso;
-  //TCanvas* cIso = new TCanvas("cIso", "Isochrons", 600, 600);
-  //viewIso.SetSensor(&sensor);
-  //viewIso.SetCanvas(cIso);
-  //viewIso.SetArea(-0.29, -rTube, -rTube, 0.29, rTube, rTube);
-  //viewIso.PlotIsochrons(5.0, points, false, true, false, false);
-  
-  //// Plot electric field lines of wires
-  //ViewField fieldView;
-  //fieldView.SetComponent(&cmp);
-  //fieldView.SetArea(-rTube, -rTube, rTube, rTube); 
-  //TCanvas* cEf = new TCanvas("cEf", "Electric Field", 600, 600);
-  //fieldView.SetCanvas(cEf);
-  //fieldView.SetNumberOfContours(90); 
-  //fieldView.PlotContour("e"); // v = potential, e = field lines
 
   app.Run(kTRUE);
 

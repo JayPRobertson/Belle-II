@@ -1,3 +1,13 @@
+'''
+Creates a drift chamber with a single drift cell and plots the resulting drift
+lines, isochrons, signal, and electric field for one vertical track.
+
+Writes out electric field strength on the track, drift time, drift distance of each 
+drift line to: "drift_data_file.csv"
+
+Gas file must be changed manually.
+'''
+
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
@@ -130,9 +140,9 @@ int main(int argc, char * argv[]) {
   std::vector<std::array<double, 3>> points;
   
   // Open csv file to write out data
-  //std::ofstream driftFile;
-  //driftFile.open("drift_data_file.csv");
-  //driftFile << "Distance,Time,EField\n"; // header
+  std::ofstream driftFile;
+  driftFile.open("drift_data_file.csv");
+  driftFile << "Distance,Time,EField\n"; // header
  
   TCanvas* cD = nullptr;
   ViewDrift driftView;
@@ -180,12 +190,12 @@ int main(int argc, char * argv[]) {
         double driftDist = std::sqrt(std::pow(xDistance, 2) + std::pow(yDistance, 2) + std::pow(zDistance, 2));
         
         // Write out drift data as csv
-        //driftFile << driftDist << "," << driftTime << "," << eMag << "\n";    
+        driftFile << driftDist << "," << driftTime << "," << eMag << "\n";    
       }
     }
     
     // Close csv file
-    //driftFile.close();
+    driftFile.close();
     
     if (plotDrift) {
       cD->Clear();

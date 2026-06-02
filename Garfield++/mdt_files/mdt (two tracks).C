@@ -1,3 +1,11 @@
+
+'''
+Creates a drift chamber with a single drift cell and plots the resulting drift
+lines, isochrons, signal, and electric field for two vertical tracks.
+
+Gas file must be changed manually.
+'''
+
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
@@ -49,24 +57,13 @@ bool readTransferFunction(Sensor& sensor) {
   return true;
 }
 
-int main(int argc, char* argv[]) {
-  
-  // Check all cl arguments correctly passed
-  if (argc < 4) {
-    std::cerr << "Error in " << argv[0] << ": Incorrect number of arguments\n";
-    return 1;
-  }
-  
-  std::string gasFilename = argv[1];
-  std::string ionMobilityFilename = argv[2];
-  int isBField = std::stoi(argv[3]);
-    
-  argc = 1;
+int main(int argc, char * argv[]) {
+
   TApplication app("app", &argc, argv);
  
   // Make a gas medium.
   MediumMagboltz gas;
-  gas.LoadGasFile(gasFilename);
+  gas.LoadGasFile("ar_93_co2_7_3bar.gas");
   auto installdir = std::getenv("GARFIELD_INSTALL");
   
   if (!installdir) {
@@ -75,7 +72,7 @@ int main(int argc, char* argv[]) {
   }
   
   const std::string path = installdir;
-  gas.LoadIonMobility(path + "/share/Garfield/Data/" + ionMobilityFilename);
+  gas.LoadIonMobility(path + "/share/Garfield/Data/IonMobility_Ar+_Ar.txt");
 
   // Make a component with analytic electric field.
   ComponentAnalyticField cmp;
@@ -109,9 +106,7 @@ int main(int argc, char* argv[]) {
   cmp.AddTube(rTube, vTube, 0);
   
   // Turn on mgnetic field
-  if (isBField) {
-    cmp.SetMagneticField(0., 0., 1.5);
-  }
+  cmp.SetMagneticField(0., 0., 1.5);
 
   // Make a sensor.
   Sensor sensor;
@@ -131,8 +126,13 @@ int main(int argc, char* argv[]) {
   // Set up Heed.
   TrackHeed track;
   track.SetParticle("muon");
-  track.SetEnergy(2.e9);
+  track.SetEnergy(170.e9);
   track.SetSensor(&sensor);
+  
+  TrackHeed track2;
+  track2.SetParticle("muon");
+  track2.SetEnergy(170.e9);
+  track2.SetSensor(&sensor);
 
   // RKF integration.
   DriftLineRKF drift(&sensor);
@@ -140,11 +140,6 @@ int main(int argc, char* argv[]) {
   
   std::vector<std::array<double, 3>> points;
   
-  // Open csv file to write out data
-  std::ofstream driftFile;
-  driftFile.open("drift_data_file.csv");
-  driftFile << "Distance,Time,EField\n"; // header
- 
   TCanvas* cD = nullptr;
   ViewDrift driftView;
   constexpr bool plotDrift = true;
@@ -153,6 +148,7 @@ int main(int argc, char* argv[]) {
     driftView.SetCanvas(cD);
     drift.EnablePlotting(&driftView);
     track.EnablePlotting(&driftView);
+    track2.EnablePlotting(&driftView);
   }
  
   TCanvas* cS = nullptr;
@@ -163,60 +159,63 @@ int main(int argc, char* argv[]) {
   const double x0 = rTrack;
   const double y0 = -sqrt(rTube * rTube - rTrack * rTrack);
   
-  const unsigned int nTracks = 1;
-  for (unsigned int j = 0; j < nTracks; ++j) {
-    sensor.ClearSignal();
-    track.NewTrack(x0, y0, 0, 0, 0, 1, 0);
-    
-    for (const auto& cluster : track.GetClusters()) {
-      for (const auto& electron : cluster.electrons) {
-        drift.DriftElectron(electron.x, electron.y, electron.z, electron.t);
-        points.push_back({electron.x, electron.y, electron.z});
-        
-        // Get drift time
-        double xf = 0., yf = 0., zf = 0., tf = 0.;
-        int stat = 0;
-        drift.GetEndPoint(xf, yf, zf, tf, stat);
-        
-        // Get electric field at starting point on track
-        double ex = 0., ey = 0., ez = 0., v = 0.;
-        Medium* m = nullptr;
-        sensor.ElectricField(electron.x, electron.y, electron.z, ex, ey, ez, v, m, stat);
-        double eMag = std::sqrt(ex*ex + ey*ey + ez *ez);
-        
-        // Get theoretical drift distance
-        double xDistance = electron.x - xf;
-        double yDistance = electron.y - yf;
-        double zDistance = electron.z - zf;
-        double driftTime = tf - electron.t;
-        double driftDist = std::sqrt(xDistance*xDistance + yDistance*yDistance + zDistance*zDistance);
-        
-        // Write out drift data as csv
-        driftFile << driftDist << "," << driftTime << "," << eMag << "\n";    
-      }
+  sensor.ClearSignal();
+  track.NewTrack(x0, y0, 0, 0, 0, 1, 0);
+  track2.NewTrack(0.1, y0, 0, 0, 0, 1, 0);
+  
+  for (const auto& cluster : track.GetClusters()) {
+    for (const auto& electron : cluster.electrons) {
+      drift.DriftElectron(electron.x, electron.y, electron.z, electron.t);
+      points.push_back({electron.x, electron.y, electron.z});
+   
     }
-    
-    if (plotDrift) {
-      cD->Clear();
-      cmp.PlotCell(cD);
-      constexpr bool twod = true;
-      constexpr bool drawaxis = false;
-      driftView.Plot(twod, drawaxis);
-    }
-    
-    sensor.ConvoluteSignals();
-    int nt = 0;
-    if (!sensor.ComputeThresholdCrossings(-2., "s", nt)) continue;
-    if (plotSignal) sensor.PlotSignal("s", cS);
   }
   
-  // Close csv file
-  driftFile.close();
+  for (const auto& cluster : track2.GetClusters()) {
+    for (const auto& electron : cluster.electrons) {
+      drift.DriftElectron(electron.x, electron.y, electron.z, electron.t);
+      points.push_back({electron.x, electron.y, electron.z});
+   
+    }
+  }
+
+  
+  if (plotDrift) {
+    cD->Clear();
+    cmp.PlotCell(cD);
+    constexpr bool twod = true;
+    constexpr bool drawaxis = false;
+    driftView.Plot(twod, drawaxis);
+  }
+  
+  sensor.ConvoluteSignals();
+  int nt = 0;
+  if (sensor.ComputeThresholdCrossings(-2., "s", nt)){
+    if (plotSignal) sensor.PlotSignal("s", cS);
+  }
+
   
   // Print number of drift lines
   const std::size_t nDriftLines = driftView.GetNumberOfDriftLines();
   std::cout << "Number of drift lines: " << nDriftLines << std::endl;
+  
+  //// Plot isochrons along track
+  //ViewIsochrons viewIso;
+  //TCanvas* cIso = new TCanvas("cIso", "Isochrons", 600, 600);
+  //viewIso.SetSensor(&sensor);
+  //viewIso.SetCanvas(cIso);
+  //viewIso.SetArea(-0.29, -rTube, -rTube, 0.29, rTube, rTube);
+  //viewIso.PlotIsochrons(5.0, points, false, true, false, false);
+  
+  //// Plot electric field lines of wires
+  //ViewField fieldView;
+  //fieldView.SetComponent(&cmp);
+  //fieldView.SetArea(-rTube, -rTube, rTube, rTube); 
+  //TCanvas* cEf = new TCanvas("cEf", "Electric Field", 600, 600);
+  //fieldView.SetCanvas(cEf);
+  //fieldView.SetNumberOfContours(90); 
+  //fieldView.PlotContour("e"); // v = potential, e = field lines
 
-  //app.Run(kTRUE);
+  app.Run(kTRUE);
 
 }
