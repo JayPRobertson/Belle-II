@@ -3,6 +3,7 @@
 #include "EventAction.hh"
 #include "PrimaryGeneratorAction.hh"
 #include "RunAction.hh"
+#include "SteppingAction.hh"
 
 namespace B2{
 
@@ -15,8 +16,8 @@ void ActionInitialization::Build() const{
   SetUserAction(new PrimaryGeneratorAction());
   SetUserAction(new RunAction);
   SetUserAction(new EventAction);
+  SetUserAction(new SteppingAction());
 }
 
 
 }  // namespace B2
-
