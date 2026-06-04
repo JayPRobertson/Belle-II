@@ -9,11 +9,20 @@
 #include "G4TrajectoryContainer.hh"
 #include "globals.hh"
 #include "TrackerHit.hh"
+#include "G4SDManager.hh"
 
 
 namespace B2{
+  
+G4int fTrackerHCID = -1;
 
-void EventAction::BeginOfEventAction(const G4Event*) {}
+void EventAction::BeginOfEventAction(const G4Event*) {
+  if (fTrackerHCID == -1) {
+        fTrackerHCID = G4SDManager::GetSDMpointer()->GetCollectionID("TrackerHitsCollection");
+  }
+
+  fTrackedDistance = 0.0;
+}
 
 void EventAction::EndOfEventAction(const G4Event* event){
   
@@ -39,11 +48,10 @@ void EventAction::EndOfEventAction(const G4Event* event){
     }
     auto hce = event->GetHCofThisEvent();
 
-    if (hce) {
-      auto hc = hce->GetHC(0);
+    if (hce){
+      auto hc = hce->GetHC(fTrackerHCID);
     
-      if (hc) {  
-        G4cout << "    " << hc->GetSize() << " hits stored in this event" << G4endl;
+      if (hc){  
         eventsFile << hc->GetSize() << ",";
         
         std::string hitEdep = "";
@@ -61,17 +69,14 @@ void EventAction::EndOfEventAction(const G4Event* event){
             hitY += std::to_string(hitPos.getY()) + "|";
             hitZ += std::to_string(hitPos.getZ()) + "|";
         }
+        eventsFile << hitEdep << "," \
+                   << hitX << "," << hitY << "," << hitZ << "\n";
         
-        eventsFile << hitEdep << ",";
-        eventsFile << hitX << "," << hitY << "," << hitZ  << "\n"; 
-        
-      } else {
-        G4cout << "    No hits collection 0" << G4endl;
-        eventsFile << "0,,,,\n";
+      }else {
+        eventsFile << "0,,,\n";
       }
-    } else {
-      G4cout << "    No hits collection container" << G4endl;
-      eventsFile << "0,,,,\n";
+    }else {
+      eventsFile << "0,,,\n";
     }
   }
   
@@ -80,6 +85,4 @@ void EventAction::EndOfEventAction(const G4Event* event){
 
 }
 
-
 }  // namespace B2
-

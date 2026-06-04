@@ -13,11 +13,10 @@ void ActionInitialization::BuildForMaster() const{
 
 
 void ActionInitialization::Build() const{
-  SetUserAction(new PrimaryGeneratorAction());
-  SetUserAction(new RunAction);
-  SetUserAction(new EventAction);
-  SetUserAction(new SteppingAction());
+    SetUserAction(new PrimaryGeneratorAction());
+    auto eventAction = new EventAction;
+    SetUserAction(eventAction);
+    SetUserAction(new SteppingAction(eventAction));
 }
-
 
 }  // namespace B2
