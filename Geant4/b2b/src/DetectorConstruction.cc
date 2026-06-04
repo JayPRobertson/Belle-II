@@ -157,6 +157,9 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   
   // ___________________ Visualization ____________________ //
   
+  G4double radLength = gasMix->GetRadlen();
+  G4cout << " Radiation length: " << radLength *0.1 << " cm" << G4endl;
+  
   G4VisAttributes* gasVisAtt = new G4VisAttributes(G4Colour::White());
   gasVisAtt->SetVisibility(true);
   cylLog->SetVisAttributes(gasVisAtt);
@@ -199,4 +202,3 @@ void DetectorConstruction::ConstructSDandField(){
 }
 
 }  // namespace B2b
-
