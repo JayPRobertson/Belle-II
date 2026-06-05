@@ -10,6 +10,7 @@
 #include "globals.hh"
 #include "TrackerHit.hh"
 #include "G4SDManager.hh"
+#include "HelixApproach.hh"
 
 
 namespace B2{
@@ -22,6 +23,7 @@ void EventAction::BeginOfEventAction(const G4Event*) {
   }
 
   fTrackedDistance = 0.0;
+  
 }
 
 void EventAction::EndOfEventAction(const G4Event* event){

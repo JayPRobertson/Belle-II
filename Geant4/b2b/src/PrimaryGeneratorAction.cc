@@ -7,6 +7,8 @@
 #include "G4ParticleTable.hh"
 #include "G4SystemOfUnits.hh"
 #include "globals.hh"
+#include "HelixApproach.hh"
+#include "G4MuonMinus.hh"
 
 #include "Randomize.hh"
 #include <cmath>
@@ -14,26 +16,20 @@
 #include "EventAction.hh"
 
 namespace B2{
-
-PrimaryGeneratorAction::PrimaryGeneratorAction(EventAction* eventAction)
-: fEventAction(eventAction){
+  
+PrimaryGeneratorAction::PrimaryGeneratorAction(EventAction* eventAction): fEventAction(eventAction){
   G4int nofParticles = 1;
   fParticleGun = new G4ParticleGun(nofParticles);
 
-  G4ParticleDefinition* particleDefinition =
-    G4ParticleTable::GetParticleTable()->FindParticle("mu-");
+  G4ParticleDefinition* particleDefinition = G4ParticleTable::GetParticleTable()->FindParticle("mu-");
 
   fParticleGun->SetParticleDefinition(particleDefinition);
   fParticleGun->SetParticleEnergy(2.0 * GeV);
   fParticleGun->SetParticlePosition(G4ThreeVector(0,0,0));
-}
-
-PrimaryGeneratorAction::~PrimaryGeneratorAction(){
-  delete fParticleGun;
-}
+} 
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event){
-
+    
     G4double cosTheta = 2.0*G4UniformRand() - 1.0;
     G4double sinTheta = std::sqrt(1.0 - cosTheta*cosTheta);
 
@@ -43,42 +39,35 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event){
     G4double py = sinTheta*std::sin(phi);
     G4double pz = cosTheta;
 
-    fParticleGun->SetParticleMomentumDirection(G4ThreeVector(px, py, pz));
+    G4ThreeVector direction(px, py, pz);
+    direction = direction.unit();
+
+    fParticleGun->SetParticleMomentumDirection(direction);
     fParticleGun->GeneratePrimaryVertex(event);
 
-    // Define detector geometry limits
-    const G4double Rin  = 16. * cm;
-    const G4double Rout = 109.6 * cm;
-    const G4double Zmax = 241.69/2 * cm;
+    G4ThreeVector entry;
+    G4ThreeVector exit;
 
-    const G4double mass = 0.105658 * GeV; // mu-
-    const G4double charge = -1.0 * eplus;
+    double rOuter = 109.6;
+    double rInner = 16.0;
+    double length = 241.69;
 
-    G4double energy = 2.0 * GeV;
-    G4double momentum = std::sqrt(energy*energy - mass*mass);
+    G4double pMag = fParticleGun->GetParticleEnergy();
+    G4ThreeVector momentum = pMag * direction;
+    G4double muMass = G4MuonMinus::Definition()->GetPDGMass();
 
-    // protect against beam parallel to z-axis
-    G4double sinThetaDir = std::sqrt(px*px + py*py);
+    G4double charge = -1.0 * CLHEP::eplus;
 
-    if (sinThetaDir < 1e-12) {
-        fEventAction->SetPredictedEntry(G4ThreeVector(0,0,0));
-        fEventAction->SetPredictedExit(G4ThreeVector(0,0,Zmax));
-        return;
-    }
+    HelixApproach helix( G4ThreeVector(0,0,0), momentum, G4ThreeVector(0,0,1.5), muMass, charge);
 
-    // approximate helix-cylinder intersection
-    G4double tEntry = Rin  / (momentum * sinThetaDir);
-    G4double tExit  = Rout / (momentum * sinThetaDir);
-
-    // enforce z-boundary
-    G4double tz = Zmax / std::abs(pz);
-    if (tz < tExit) tExit = tz;
-
-    G4ThreeVector entry = G4ThreeVector(px,py,pz) * tEntry;
-    G4ThreeVector exit  = G4ThreeVector(px,py,pz) * tExit;
+    helix.FindGasVolumeCrossings(rInner, rOuter, length/2, entry, exit);
 
     fEventAction->SetPredictedEntry(entry);
     fEventAction->SetPredictedExit(exit);
+}
+
+PrimaryGeneratorAction::~PrimaryGeneratorAction(){
+  delete fParticleGun;
 }
 
 }  // namespace B2

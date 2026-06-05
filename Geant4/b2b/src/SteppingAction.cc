@@ -50,7 +50,7 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep){
 
       stepFile << energy << ","
                << pos.x() << "," << pos.y() << "," << pos.z()
-               << "," << dist << ",";
+               << "," << dist << "\n";
                
       stepFile.close();
       
@@ -63,14 +63,15 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep){
       
       eePosFile << fActEntry.x() << "," << fActEntry.y() << ","
                  << fActEntry.z() << ","
+                 
                  << fActExit.x() << "," << fActExit.y() << ","
                  << fActExit.z() << ","
                  
-                 << fPredEntry.x() << "," << fPredEntry.y() << ","
-                 << fPredEntry.z() << ","
+                 << fPredEntry.x()*10 << "," << fPredEntry.y()*10 << ","
+                 << fPredEntry.z()*10 << ","
                  
-                 << fPredExit.x() << "," << fPredExit.y() << ","
-                 << fPredExit.z() << "\n";
+                 << fPredExit.x()*10 << "," << fPredExit.y()*10 << ","
+                 << fPredExit.z()*10 << "\n";
                  
       eePosFile.close();
   }
