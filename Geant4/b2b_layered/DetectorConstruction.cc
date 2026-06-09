@@ -25,8 +25,6 @@
 #include <string>
 
 namespace B2b{
-  
-G4LogicalVolume* cylLog;
 
 G4VPhysicalVolume* DetectorConstruction::Construct(){
   // ____________________ Define Gas Mixtures _____________________ //
@@ -70,10 +68,6 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   G4double pDz = 79.29*cm;      // Half height
   G4double pDzSmall = 11.65*cm;
   
-  const G4double z1 = 14.579*cm;
-  const G4double z2 = 107.145*cm;
-  const G4double z3 = length/2;
-  
   // _____________________ Define World Size _______________________ //
   
   G4GeometryManager::GetInstance()->SetWorldMaximumExtent(worldLength);
@@ -92,30 +86,78 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   
   // ___________________ Define Chamber Size ____________________ //
   
-  // Create cone objects
-  G4Cons* solidCone = new G4Cons("ConeSolid", 0.*cm, rCone, 0.*cm, 0.*cm, pDz, startAngle, spanAngle); 
-  G4Cons* smallCone = new G4Cons("smallCone", 0.*cm, rOuter, 0.*cm, 0.*cm, pDzSmall, startAngle, spanAngle);
-
-  // Create cylinder objects
-  G4Tubs* outerCyl = new G4Tubs("OuterCyl", rCenter, rOuter, z3, startAngle, spanAngle);
-  G4Tubs* innerCyl = new G4Tubs("InnerCyl", rCenter, rInner, (length+10)/2, startAngle, spanAngle);
+  // Set Visibility
+  G4VisAttributes* shellVisAtt = new G4VisAttributes(G4Colour::Blue());
+  G4VisAttributes* gasVisAtt = new G4VisAttributes(G4Colour::White());
   
-  // Subtract inner cylinder from outer
-  G4SubtractionSolid* cylindersS = new G4SubtractionSolid("cylindersS", outerCyl, innerCyl, nullptr, G4ThreeVector(0, 0, 0));
+  // Constants
+  const int maxI = 2000;
+  const G4double z1 = 14.579*cm;
+  const G4double z2 = 107.145*cm;
+  const G4double z3 = length/2;
   
-  // Subtract cones from cylinders
-  G4SubtractionSolid* gasCylS_min1 = new G4SubtractionSolid("gasCylS_min1", cylindersS, solidCone, 0, G4ThreeVector(0, 0, -(z3-pDz)));
-  G4SubtractionSolid* gasCylS_min2 = new G4SubtractionSolid("gasCylS_min2", gasCylS_min1, smallCone, 0, G4ThreeVector(0, 0, -(z3-pDzSmall)));
+  const G4double thick1 = 1.6354*cm;
+  const G4double thick2 = 0.18*cm;
   
-  G4RotationMatrix* coneRotation = new G4RotationMatrix();
-  coneRotation->rotateY(180.0 * deg);
+  // Changeables
+  bool isSwitched = false;
+  G4double r1 = rInner - 0.5*cm;
+  G4double thickness = z1;
   
-  G4SubtractionSolid* gasCylS_min3 = new G4SubtractionSolid("gasCylS_min3", gasCylS_min2, solidCone, coneRotation, G4ThreeVector(0, 0, (z3-pDz)));
-  G4SubtractionSolid* gasCylS = new G4SubtractionSolid("gasCylS", gasCylS_min3, smallCone, coneRotation, G4ThreeVector(0, 0, (z3-pDzSmall)));
+  // Create sensitive detector
+  auto trackerSD = new B2::TrackerSD("B2/gasSD", "TrackerHitsCollection");
+  G4SDManager::GetSDMpointer()->AddNewDetector(trackerSD);
   
-  // Place cut cylinder filled with gas in world
-  cylLog = new G4LogicalVolume(gasCylS, gasMix,"CylinderLog");
-  G4VPhysicalVolume* cylPhys = new G4PVPlacement(0, G4ThreeVector(0,0,0), cylLog,"CylinderPhys", worldLV, false, 0, true);
+  // Create layers of gas and endplates
+  for (int i = 0; i < maxI; i++) {
+    G4double r2;
+    
+    if (thickness < z2 && thickness+thick1 < z2){
+      r1 += 0.5*cm;
+      r2 = r1 + 0.5*cm;
+      thickness += thick1;
+    }else{
+      if (!isSwitched){
+        G4cout << "thickness = " << thickness << G4endl;
+        r1 += 0.5*cm;
+        isSwitched = true;
+      }else{
+        r1 += 0.85*cm;
+      }
+      r2 = r1 + 0.85*cm;
+      thickness += thick2;
+    }
+    
+    // Stop building if gas volume too large
+    if (r2 > rOuter || thickness > z3){
+      i = maxI +1;
+      
+      continue;
+    }
+    
+    // Create gas volume layer
+    G4Tubs* cylRing = new G4Tubs("CylRing", r1, r2, thickness, startAngle, spanAngle);
+    G4LogicalVolume* cylRingLog = new G4LogicalVolume(cylRing, gasMix, "CylRingLog");
+    
+    cylRingLog->SetVisAttributes(gasVisAtt);
+    
+    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 0), cylRingLog, "GasLayerRing", worldLV, false, i, false);
+    
+    SetSensitiveDetector(cylRingLog, trackerSD);
+    
+    // Create endplate volumes
+    if (thickness >= z2){
+      G4Tubs* ringSolid = new G4Tubs("RingSolid", r1, r2, 0.5*cm, startAngle, spanAngle);
+      G4LogicalVolume* ringLog = new G4LogicalVolume(ringSolid, al, "RingLog");
+      
+      ringLog->SetVisAttributes(shellVisAtt); 
+      
+      G4double pos = thickness+thick2;
+      
+      new G4PVPlacement(nullptr, G4ThreeVector(0, 0, pos), ringLog, "EndplateRing_Pos", worldLV, false, i, false);
+      new G4PVPlacement(nullptr, G4ThreeVector(0, 0, -pos), ringLog, "EndplateRing_Neg", worldLV, false, i, false);
+    }
+  }
   
   // Create aluminum shell objects
   G4Tubs* outShellS = new G4Tubs("outShellS", rOuter, rOuter + 1.0*cm, z3, startAngle, spanAngle);
@@ -127,25 +169,6 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   
   G4LogicalVolume* inShellLog = new G4LogicalVolume(inShellS, al, "inShellLog");
   G4VPhysicalVolume* inShellPhys = new G4PVPlacement(0, G4ThreeVector(0,0,0), inShellLog,"inShellPhys", worldLV, false, 0, true);
-  
-  G4VisAttributes* shellVisAtt = new G4VisAttributes(G4Colour::Blue());
-  
-  // Create aluminum endplates 
-  for (int i = 0; i < 77; i++) {
-    G4double r1 = 43.8*cm + i*0.85*cm;
-    G4double r2 = r1 + 0.85*cm;
-    G4double thickness = 1.0*cm;
-    
-    G4Tubs* ringSolid = new G4Tubs("RingSolid", r1, r2, thickness/2, startAngle, spanAngle);
-    G4LogicalVolume* ringLog = new G4LogicalVolume(ringSolid, al, "RingLog");
-    
-    ringLog->SetVisAttributes(shellVisAtt);
-    
-    G4double zPosPositive =  107.47*cm + i*0.18*cm; 
-
-    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, zPosPositive), ringLog, "EndplateRing_Pos", worldLV, false, i, false);
-    new G4PVPlacement(nullptr, G4ThreeVector(0, 0, -zPosPositive), ringLog, "EndplateRing_Neg", worldLV, false, i, false);
-  }
   
   // ___________________ Print constants ____________________ //
   
@@ -159,11 +182,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   
   // ___________________ Visualization ____________________ //
   
-  G4VisAttributes* gasVisAtt = new G4VisAttributes(G4Colour::White());
-  gasVisAtt->SetVisibility(true);
-  cylLog->SetVisAttributes(gasVisAtt);
-  
   shellVisAtt->SetVisibility(true);
+  gasVisAtt->SetVisibility(true);
   shellCylLog->SetVisAttributes(shellVisAtt);
   inShellLog->SetVisAttributes(shellVisAtt);
   
@@ -185,11 +205,6 @@ DetectorConstruction::DetectorConstruction(){}
 DetectorConstruction::~DetectorConstruction(){}
 
 void DetectorConstruction::ConstructSDandField(){
- 
-  // Sensitive detectors
-  auto trackerSD = new B2::TrackerSD("B2/gasSD", "TrackerHitsCollection");
-  G4SDManager::GetSDMpointer()->AddNewDetector(trackerSD);
-  SetSensitiveDetector(cylLog, trackerSD);
 
   // Create constant magentic field
   G4ThreeVector fieldValue = G4ThreeVector(0., 0., 1.5*tesla);

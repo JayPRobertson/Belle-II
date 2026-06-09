@@ -10,11 +10,19 @@ One the directory is replaced, run using the Geant4 visualization UI:
 ```
 cd geant4/examples/basic/B2/b2b/build
 cmake ../
-chmod +x run_example2b2.sh
-./run_example2b2b.sh
+chmod +x run_exampleb2b.sh
+./run_exampleb2b.sh
 ```
 
-Make sure to adjust the filepath in `run_example2b2b.sh` before running.
+Make sure to adjust the filepath in `run_exampleb2b.sh` before running.
+
+## Output
+
+Outputs three csv files of collected data. Filepath of output is set as `Python/csv/hits/`and can be modified in `run_exampleb2b.sh`.
+
+- `entry_exit_data.csv` - the actual and expected point of entry and exit from the gas volume; for calculating multiple scattering
+- `event_action_data.csv` - hit energy and hit positions
+- `init_step_data.csv` - initial energy and position, and dEdx over volume
 
 ## Supplementary Material
 - [Analysis of collected data](https://github.com/JayPRobertson/Belle-II/blob/main/Python/geant4_data_analysis.ipynb)
