@@ -24,7 +24,7 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(EventAction* eventAction): fEvent
   G4ParticleDefinition* particleDefinition = G4ParticleTable::GetParticleTable()->FindParticle("mu-");
 
   fParticleGun->SetParticleDefinition(particleDefinition);
-  fParticleGun->SetParticleEnergy(2.0 * GeV);
+  fParticleGun->SetParticleEnergy(2.0 *GeV);
   fParticleGun->SetParticlePosition(G4ThreeVector(0,0,0));
 } 
 
@@ -48,9 +48,9 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event){
     G4ThreeVector entry;
     G4ThreeVector exit;
 
-    double rOuter = 109.6;
-    double rInner = 16.0;
-    double length = 241.69;
+    G4double rOuter = 109.6 *cm; 
+    G4double rInner = 16.0 *cm;  
+    G4double length = 241.69 *cm; 
 
     G4double pMag = fParticleGun->GetParticleEnergy();
     G4ThreeVector momentum = pMag * direction;
@@ -58,7 +58,7 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event){
 
     G4double charge = -1.0 * CLHEP::eplus;
 
-    HelixApproach helix( G4ThreeVector(0,0,0), momentum, G4ThreeVector(0,0,1.5), muMass, charge);
+    HelixApproach helix(G4ThreeVector(0,0,0), momentum, G4ThreeVector(0,0,1.5*tesla), muMass, charge);
 
     helix.FindGasVolumeCrossings(rInner, rOuter, length/2, entry, exit);
 

@@ -90,11 +90,11 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep){
                  << fActExit.x() << "," << fActExit.y() << ","
                  << fActExit.z() << ","
                  
-                 << fPredEntry.x()*10 << "," << fPredEntry.y()*10 << ","
-                 << fPredEntry.z()*10 << ","
+                 << fPredEntry.x() << "," << fPredEntry.y() << ","
+                 << fPredEntry.z() << ","
                  
-                 << fPredExit.x()*10 << "," << fPredExit.y()*10 << ","
-                 << fPredExit.z()*10 << "\n";
+                 << fPredExit.x() << "," << fPredExit.y() << ","
+                 << fPredExit.z() << "\n";
                  
       eePosFile.close();
   }  

@@ -1,26 +1,27 @@
 #include "HelixApproach.hh"
 #include "G4ThreeVector.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4PhysicalConstants.hh"
 
 #include <cmath>
 
 namespace{
-    constexpr double c_light = 2.99792458e8;
 }
 
 HelixApproach::HelixApproach(
     const G4ThreeVector& position,
     const G4ThreeVector& momentum,
     const G4ThreeVector& magneticField,
-    double mass,
-    double charge)
-    : fInitialPosition(position) {
+    G4double mass,
+    G4double charge): fInitialPosition(position){
+        
     fFieldAxis = magneticField.unit();
 
-    double p = momentum.mag();
-    double gamma = std::sqrt(p*p + mass*mass) / mass;
-    double beta = p / std::sqrt(p*p + mass*mass);
-    double speed = beta*c_light;
-    double B = magneticField.mag();
+    G4double p = momentum.mag();
+    G4double gamma = std::sqrt(p*p + mass*mass) / mass;
+    G4double beta = p / std::sqrt(p*p + mass*mass);
+    G4double speed = beta*c_light;
+    G4double B = magneticField.mag();
 
     G4ThreeVector dir = RotateToFieldAxis(momentum.unit());
 
@@ -40,10 +41,10 @@ HelixApproach::HelixApproach(
 }
 
 G4ThreeVector HelixApproach::RotateToFieldAxis(const G4ThreeVector& v) const {
-    double ux = fFieldAxis.x();
-    double uy = fFieldAxis.y();
-    double uz = fFieldAxis.z();
-    double rho = std::sqrt(ux*ux + uy*uy);
+    G4double ux = fFieldAxis.x();
+    G4double uy = fFieldAxis.y();
+    G4double uz = fFieldAxis.z();
+    G4double rho = std::sqrt(ux*ux + uy*uy);
 
     if(rho < 1e-12) return v;
 
@@ -54,10 +55,10 @@ G4ThreeVector HelixApproach::RotateToFieldAxis(const G4ThreeVector& v) const {
 }
 
 G4ThreeVector HelixApproach::RotateFromFieldAxis(const G4ThreeVector& v) const {
-    double ux = fFieldAxis.x();
-    double uy = fFieldAxis.y();
-    double uz = fFieldAxis.z();
-    double rho = std::sqrt(ux*ux + uy*uy);
+    G4double ux = fFieldAxis.x();
+    G4double uy = fFieldAxis.y();
+    G4double uz = fFieldAxis.z();
+    G4double rho = std::sqrt(ux*ux + uy*uy);
 
     if(rho < 1e-12) return v;
 
@@ -67,7 +68,7 @@ G4ThreeVector HelixApproach::RotateFromFieldAxis(const G4ThreeVector& v) const {
         -rho*v.x() + uz*v.z());
 }
 
-G4ThreeVector HelixApproach::Position(double t) const {
+G4ThreeVector HelixApproach::Position(G4double t) const {
     G4ThreeVector shift(
         fRadius*std::cos(fOmega*t + fAlpha),
         fRadius*std::sin(fOmega*t + fAlpha),
@@ -76,7 +77,7 @@ G4ThreeVector HelixApproach::Position(double t) const {
     return fInitialPosition + RotateFromFieldAxis(fHelixCentre + shift);
 }
 
-G4ThreeVector HelixApproach::Velocity(double t) const {
+G4ThreeVector HelixApproach::Velocity(G4double t) const {
     return RotateFromFieldAxis(
         G4ThreeVector(
             -fVperp*std::sin(fOmega*t + fAlpha),
@@ -86,9 +87,9 @@ G4ThreeVector HelixApproach::Velocity(double t) const {
 
 
 bool HelixApproach::InGas(
-    const G4ThreeVector& p, double innerRadius, double outerRadius, double halfLength) const {
+    const G4ThreeVector& p, G4double innerRadius, G4double outerRadius, G4double halfLength) const {
     
-    double r = std::sqrt(p.x()*p.x() + p.y()*p.y());
+    G4double r = std::sqrt(p.x()*p.x() + p.y()*p.y());
 
     return (r >= innerRadius &&
             r <= outerRadius &&
@@ -97,20 +98,19 @@ bool HelixApproach::InGas(
 
 
 void HelixApproach::FindGasVolumeCrossings(
-    double innerRadius,
-    double outerRadius,
-    double halfLength,
+    G4double innerRadius,
+    G4double outerRadius,
+    G4double halfLength,
     G4ThreeVector& entryPoint,
     G4ThreeVector& exitPoint) const {
         
-    double dt = 1e-11;
-
+    G4double dt = 1e-11*second;
 
     bool foundEntry = false;
     G4ThreeVector p;
     int entryIndex = -1;
     
-    for(int i = 0; i < 200000; i++){
+    for(int i = 0; i < 200000000; i++){
         p = Position(i * dt);
         if(InGas(p, innerRadius, outerRadius, halfLength)){
             entryPoint = p;
@@ -127,7 +127,7 @@ void HelixApproach::FindGasVolumeCrossings(
     }
     
     bool foundExit = false;
-    for(int i = entryIndex; i < 200000; i++){
+    for(int i = entryIndex; i < 200000000; i++){
         p = Position(i * dt);
         if(!InGas(p, innerRadius, outerRadius, halfLength)){
             exitPoint = p;
