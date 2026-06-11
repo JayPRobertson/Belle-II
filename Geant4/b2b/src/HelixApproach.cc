@@ -46,7 +46,7 @@ G4ThreeVector HelixApproach::RotateToFieldAxis(const G4ThreeVector& v) const {
     G4double uz = fFieldAxis.z();
     G4double rho = std::sqrt(ux*ux + uy*uy);
 
-    if(rho < 1e-12) return v;
+    if(rho < 1e-20) return v;
 
     return G4ThreeVector(
         ux*uz*v.x()/rho + uy*v.y()/rho - rho*v.z(),
@@ -60,7 +60,7 @@ G4ThreeVector HelixApproach::RotateFromFieldAxis(const G4ThreeVector& v) const {
     G4double uz = fFieldAxis.z();
     G4double rho = std::sqrt(ux*ux + uy*uy);
 
-    if(rho < 1e-12) return v;
+    if(rho < 1e-20) return v;
 
     return G4ThreeVector(
         ux*uz*v.x()/rho - uy*v.y()/rho + ux*v.z(),
@@ -104,7 +104,7 @@ void HelixApproach::FindGasVolumeCrossings(
     G4ThreeVector& entryPoint,
     G4ThreeVector& exitPoint) const {
         
-    G4double dt = 1e-11*second;
+    G4double dt = 1e-14*second;
 
     bool foundEntry = false;
     G4ThreeVector p;

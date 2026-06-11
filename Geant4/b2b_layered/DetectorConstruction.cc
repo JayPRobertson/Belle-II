@@ -108,6 +108,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   auto trackerSD = new B2::TrackerSD("B2/gasSD", "TrackerHitsCollection");
   G4SDManager::GetSDMpointer()->AddNewDetector(trackerSD);
   
+  std::ofstream layerFile("layer_radius.csv", std::ios_base::app);
+  
   // Create layers of gas and endplates
   for (int i = 0; i < maxI; i++) {
     G4double r2;
@@ -135,6 +137,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
       continue;
     }
     
+    layerFile << r1 << "," << r2 << "\n";
+    
     // Create gas volume layer
     G4Tubs* cylRing = new G4Tubs("CylRing", r1, r2, thickness, startAngle, spanAngle);
     G4LogicalVolume* cylRingLog = new G4LogicalVolume(cylRing, gasMix, "CylRingLog");
@@ -158,6 +162,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
       new G4PVPlacement(nullptr, G4ThreeVector(0, 0, -pos), ringLog, "EndplateRing_Neg", worldLV, false, i, false);
     }
   }
+  
+  layerFile.close();
   
   // Create aluminum shell objects
   G4Tubs* outShellS = new G4Tubs("outShellS", rOuter, rOuter + 1.0*cm, z3, startAngle, spanAngle);

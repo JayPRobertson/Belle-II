@@ -16,6 +16,8 @@ chmod +x run_exampleb2b.sh
 
 Make sure to adjust the filepath in `run_exampleb2b.sh` before running.
 
+Two files, `run_switch_to_b2b.sh` and `run_switch_to_layered.sh`, have been included to help switch between the two detector geometries in `b2b` and `b2b_layered`.
+
 ## Output
 
 Outputs three csv files of collected data. Filepath of output is set as `Python/csv/hits/`and can be modified in `run_exampleb2b.sh`.

@@ -21,47 +21,33 @@
 SteppingAction::SteppingAction(B2::EventAction* eventAction)
  : fEventAction(eventAction){}
 
-void SteppingAction::UserSteppingAction(const G4Step* aStep){
+void SteppingAction::UserSteppingAction(const G4Step* aStep) {
+    G4StepPoint* preStepPoint = aStep->GetPreStepPoint();
+    G4VPhysicalVolume* preVol = preStepPoint->GetPhysicalVolume();
 
-  G4StepPoint* preStepPoint  = aStep->GetPreStepPoint();
-  G4StepPoint* postStepPoint = aStep->GetPostStepPoint();
+    // Verify particle is inside the volume
+    if (!preVol) return;
 
-  G4VPhysicalVolume* preVol  = preStepPoint->GetPhysicalVolume();
-  G4VPhysicalVolume* postVol = postStepPoint->GetPhysicalVolume();
-  
-  // Verify particle is inside the volume
-  if(!preVol || !postVol) return;
+    // Process only if the particle is currently inside a gas layer
+    if (preVol->GetName() == "GasLayerRing") {
+        G4int volumeID = preVol->GetCopyNo();
+        G4int curIndex = fEventAction->GetCurIndex();
 
-  // Get point particle enters gas volume
-  if(preVol->GetName() == "GasLayerRing" &&
-     postVol->GetName() == "GasLayerRing"){
-      
-      G4int volumeID = postVol->GetCopyNo();
-      G4int curIndex = fEventAction->GetCurIndex();
-      
-      if (curIndex < volumeID){
-         if (curIndex != 0){
-            std::ofstream layerFile("layered_edep_data.csv", std::ios_base::app);
-            
-            fEventAction->AddTrackedEdep(aStep->GetTotalEnergyDeposit());
-            
-            G4ThreeVector prePos = fEventAction->GetPreStep();
-            G4ThreeVector postPos = postStepPoint->GetPosition();
-            layerFile << prePos.x() << "," << prePos.y() << "," 
-                      << prePos.z() << ","
-                      << postPos.x() << "," << postPos.y() << "," 
-                      << postPos.z() << ","
-                      << fEventAction->GetTrackedEdep() << "\n";   
-            
-            layerFile.close();
-         }
+        // Check if new layer entered
+        if (curIndex < volumeID) {
+            fEventAction->SetTotEdep(); 
 
-         G4ThreeVector preStepPosition = postStepPoint->GetPosition();
-         fEventAction->SetPreStep(preStepPosition);
-         fEventAction->SetCurIndex(volumeID);
-         fEventAction->ResetTrackedEdep();
-     }
-  }
- 
-  
+            // Initialize tracking for new layer
+            G4ThreeVector entryPos = preStepPoint->GetPosition();
+            fEventAction->SetPrePos(entryPos);
+            fEventAction->SetPreStep(entryPos);
+            fEventAction->SetCurIndex(volumeID);
+            fEventAction->ResetTrackedEdep();
+        }
+        
+        // Store positions and total energy of layer for this beam
+        fEventAction->AddTrackedEdep(aStep->GetTotalEnergyDeposit());
+        G4StepPoint* postStepPoint = aStep->GetPostStepPoint();
+        fEventAction->SetPostPos(postStepPoint->GetPosition());
+    }
 }

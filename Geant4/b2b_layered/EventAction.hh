@@ -5,6 +5,8 @@
 #include "globals.hh"
 #include "G4ThreeVector.hh"
 
+//#include <string>
+
 class G4Event;
 
 namespace B2{
@@ -29,12 +31,46 @@ class EventAction : public G4UserEventAction{
         preStep = preStepPosition;
     }
     G4ThreeVector GetPreStep() { return preStep; }
+    
+    void SetPrePos(G4ThreeVector prePos) { 
+        prePosX += std::to_string(prePos.x()) + "|";
+        prePosY += std::to_string(prePos.y()) + "|";
+        prePosZ += std::to_string(prePos.z()) + "|";
+    }
+    std::string GetPrePos() { 
+        return prePosX + "," + prePosY + "," + prePosZ + ","; 
+    }
+    
+    void SetPostPos(G4ThreeVector postPos) { 
+        postPosX += std::to_string(postPos.x()) + "|";
+        postPosY += std::to_string(postPos.y()) + "|";
+        postPosZ += std::to_string(postPos.z()) + "|";
+    }
+    std::string GetPostPos() { 
+        return postPosX + "," + postPosY + "," + postPosZ + ","; 
+    }
+    
+    void SetTotEdep(){
+        totEdep += std::to_string(fTrackedEdep) + "|";
+    }
+    
+    std::string GetTotEdep(){ return totEdep; }
 
 private:
     G4double fTrackedEdep = 0.0;    
     G4int curIndex = 0;
     
     G4ThreeVector preStep;
+    
+    std::string prePosX = "";
+    std::string prePosY = "";
+    std::string prePosZ = "";
+    
+    std::string postPosX = "";
+    std::string postPosY = "";
+    std::string postPosZ = "";
+    
+    std::string totEdep = "";
 };
 
 }  // namespace B2

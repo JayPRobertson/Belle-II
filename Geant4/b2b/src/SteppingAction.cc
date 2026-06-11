@@ -82,19 +82,24 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep){
       G4ThreeVector fActEntry  = fEventAction->GetActualEntry();
       G4ThreeVector fActExit   = fEventAction->GetActualExit();
       
+      G4ThreeVector initMomentum = fEventAction->GetInitMomentum();
+      
       std::ofstream eePosFile("entry_exit_data.csv", std::ios_base::app);
       
-      eePosFile << fActEntry.x() << "," << fActEntry.y() << ","
-                 << fActEntry.z() << ","
+      eePosFile << initMomentum.x() << "," << initMomentum.y() << ","
+                << initMomentum.z() << ","
+      
+                << fActEntry.x() << "," << fActEntry.y() << ","
+                << fActEntry.z() << ","
                  
-                 << fActExit.x() << "," << fActExit.y() << ","
-                 << fActExit.z() << ","
+                << fActExit.x() << "," << fActExit.y() << ","
+                << fActExit.z() << ","
                  
-                 << fPredEntry.x() << "," << fPredEntry.y() << ","
-                 << fPredEntry.z() << ","
+                << fPredEntry.x() << "," << fPredEntry.y() << ","
+                << fPredEntry.z() << ","
                  
-                 << fPredExit.x() << "," << fPredExit.y() << ","
-                 << fPredExit.z() << "\n";
+                << fPredExit.x() << "," << fPredExit.y() << ","
+                << fPredExit.z() << "\n";
                  
       eePosFile.close();
   }  

@@ -21,6 +21,21 @@ void EventAction::BeginOfEventAction(const G4Event*) {
   if (fTrackerHCID == -1) {
         fTrackerHCID = G4SDManager::GetSDMpointer()->GetCollectionID("TrackerHitsCollection");
   }
+  
+  // Reset tracking variables
+  prePosX = "";
+  prePosY = "";
+  prePosZ = "";
+  
+  postPosX = "";
+  postPosY = "";
+  postPosZ = "";
+  
+  totEdep = "";
+  
+  fTrackedEdep = 0.0;
+  curIndex = -1;
+  
 }
 
 void EventAction::EndOfEventAction(const G4Event* event){
@@ -80,7 +95,18 @@ void EventAction::EndOfEventAction(const G4Event* event){
   }
   
   // Close file
-  eventsFile.close(); 
+  eventsFile.close();
+  
+  std::ofstream layerFile("layered_edep_data.csv", std::ios_base::app);
+  
+  std::string index = std::to_string(eventID) + ",";
+  std::string prePos = GetPrePos();
+  std::string postPos = GetPostPos();
+  std::string totEdep = GetTotEdep();
+  
+  layerFile << index << prePos << postPos << totEdep << "\n";
+  
+  layerFile.close();
 
 }
 
