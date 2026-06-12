@@ -2,9 +2,16 @@
 
 One way to measure energy deposition through a volume is to divide up the volume into layers and detect when a particle enters and exits that layer. 
 
-This code is a supplemental to the main body of code in `b2b`. Replace select files in `b2b` directory with those in `b2b_layered` and run as normal.
+## Running Files
 
-Outputs two files:
+This code is a supplemental to the main body of code in `b2b`. Replace select files in `b2b` directory with those in `b2b_layered` and run as normal. 
+
+Make sure you have the nlohmann C++ json parser installed before attempting to run this version. On macOS, this can be done using: ```brew install nlohmann-json```.
+
+This code accepts a file called `geometry.json`, which describes the geometry of the desired detector. Modify this file to modify the detector construction.
+
+## Output
 
 - `event_action_data_layered.csv` - hit energy and hit positions
 - `layered_edep_data.csv` - energy deposition within layers
+- `layer_radius.csv` - inner and outer radius of each gas layer

@@ -4,4 +4,5 @@ FILEPATH="$HOME/Desktop/Belle II/Geant4/b2b_layered"
 cp "$FILEPATH"/*.cc ../src/
 cp "$FILEPATH"/*.hh ../include/
 
-cp "$FILEPATH"/*.sh .
+cp "$FILEPATH/run_exampleb2b.sh" .
+cp "$FILEPATH/geometry.json" .
