@@ -4,7 +4,7 @@ One way to measure energy deposition through a volume is to divide up the volume
 
 ## Running Files
 
-This code is a supplemental to the main body of code in `b2b`. Replace select files in `b2b` directory with those in `b2b_layered` and run as normal. 
+This code is a supplemental to the main body of code in `b2b`. Replace select files in `b2b` directory with those in `b2b_layered` and run as normal. There is a modified version of this layered geometry in `b2b_superlayers` that adds the ability to edit superlayers of drift cells, and a shell script file that will switch to the geometry.
 
 Make sure you have the nlohmann C++ json parser installed before attempting to run this version. On macOS, this can be done using: ```brew install nlohmann-json```.
 

@@ -9,11 +9,13 @@
 #include "globals.hh"
 #include "HelixApproach.hh"
 #include "G4MuonMinus.hh"
+#include "G4RunManager.hh"
 
 #include "Randomize.hh"
 #include <cmath>
 
 #include "EventAction.hh"
+#include "DetectorConstruction.hh"
 
 namespace B2{
   
@@ -57,8 +59,12 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event){
     G4double muMass = G4MuonMinus::Definition()->GetPDGMass();
 
     G4double charge = -1.0 * CLHEP::eplus;
+    
+    const G4RunManager* runManager = G4RunManager::GetRunManager();
+    const B2b::DetectorConstruction* detectorConstruction = dynamic_cast<const B2b::DetectorConstruction*>(runManager->GetUserDetectorConstruction());
+    G4ThreeVector magneticField = detectorConstruction->GetMagneticField();
 
-    HelixApproach helix(G4ThreeVector(0,0,0), momentum, G4ThreeVector(0,0,1.5*tesla), muMass, charge);
+    HelixApproach helix(G4ThreeVector(0,0,0), momentum, magneticField, muMass, charge);
 
     helix.FindGasVolumeCrossings(rInner, rOuter, length/2, entry, exit);
 }

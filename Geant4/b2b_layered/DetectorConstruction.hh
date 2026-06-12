@@ -39,6 +39,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     void SetChamberMaterial(G4String);
     void SetMaxStep(G4double);
     void SetCheckOverlaps(G4bool);
+    
+    G4ThreeVector GetMagneticField() const { return magneticField; }
 
   private:
     void DefineMaterials();

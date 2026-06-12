@@ -110,16 +110,31 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   // _____________________ Define Constants _______________________ //
   
   // Define dimensional constants
-  G4double rCenter = 0.0 * cm;
-  G4double startAngle = 0.0 * deg;
-  G4double spanAngle = 360.0 * deg;
+  G4double rCenter = 0.0 *cm;
+  G4double startAngle = 0.0 *deg;
+  G4double spanAngle = 360.0 *deg;
   
   // Gas volume
-  json dimensions = jsonData["gas_volume"]["dimensions"];
-  G4double rOuter = dimensions["radius_outer"].get<G4double>() * cm;
-  G4double rInner = dimensions["radius_inner"].get<G4double>() * cm; 
-  G4double length = dimensions["full_length"].get<G4double>() * cm;
+  G4int numSuperlayers = jsonData["layers"]["num_of_superlayers"].get<G4int>();
   
+  std::vector<G4int> numSublayers;
+  std::vector<G4double> outerRadii;
+  json dimensions = jsonData["layers"]["super_layers"];
+  
+  for (int i=0; i < numSuperlayers; i++){
+    json curLayer = dimensions["layer"+std::to_string(i)];
+    G4int curSublayers = curLayer["num_sublayers"].get<G4int>();
+    G4double curOuterRadius = curLayer["outer_radius"].get<G4double>() *cm;
+    
+    numSublayers.push_back(curSublayers);
+    outerRadii.push_back(curOuterRadius);
+  }
+  
+  dimensions = jsonData["gas_volume"]["dimensions"];
+  G4double length = dimensions["full_length"].get<G4double>() *cm;
+  G4double rInner = dimensions["radius_inner"].get<G4double>() *cm;
+  G4double rOuter = outerRadii.back(); 
+                              
   G4double worldLength = 1.5 * length;
   
   // Cone cutouts
@@ -132,12 +147,10 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   
   // Shell volume
   dimensions = jsonData["shell_volume"]["dimensions"];
-  G4double lengthShell = dimensions["full_length"].get<G4double>() * cm;
   G4double thicknessShell = dimensions["thickness"].get<G4double>() * cm;
   
   // Endplates volume
   dimensions = jsonData["endplates_volume"]["dimensions"];
-  G4double rOuterEndplate = dimensions["radius_outer"].get<G4double>() * cm;
   G4double thicknessEndplate = dimensions["thickness"].get<G4double>() * cm;
 
   // _____________________ Define World Size _______________________ //
@@ -161,46 +174,79 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   G4VisAttributes* shellVisAtt = new G4VisAttributes(G4Colour::Blue());
   G4VisAttributes* gasVisAtt = new G4VisAttributes(G4Colour::White());
   
-  const int maxI = 2000;
-  const G4double z3 = length/2;
-  const G4double z1 = z3 - ((longR-rInner) /std::tan(longAngle));
-  const G4double z2 = z3 - ((shortR-rInner) /std::tan(shortAngle));
-  
-  const G4double thick1 = 1.6354 * cm;
-  const G4double thick2 = 0.18 * cm;
-  
-  bool isSwitched = false;
-  G4double r1 = rInner - 0.5 * cm;
-  G4double thickness = z1;
-  
   auto trackerSD = new B2::TrackerSD("B2/gasSD", "TrackerHitsCollection");
   G4SDManager::GetSDMpointer()->AddNewDetector(trackerSD);
   
   std::ofstream layerFile("layer_radius.csv", std::ios_base::app);
   
+  // Large number to prevent early termination
+  const int maxI = 5000;
+  
+  // Transition points where cutout angle changes
+  const G4double z3 = length/2;
+  const G4double z1 = z3 - ((longR-rInner) /std::tan(longAngle));
+  const G4double z2 = z3 - ((shortR-rInner) /std::tan(shortAngle));
+  
+  // Current superlayer information
+  int curSuperlayer = 0;
+  int curSublayer = 0;
+  G4double curSpacing = (outerRadii[0]-rInner)/numSublayers[0];
+  G4double curThickness = curSpacing/std::tan(longAngle);
+  
+  bool isSwitched = false;
+  G4double r1 = rInner - curSpacing;
+  G4double thickness = z1;
+  
   for (int i = 0; i < maxI; i++) {
     G4double r2;
     
-    if (thickness < z2 && thickness + thick1 < z2){
-      r1 += 0.5 * cm;
-      r2 = r1 + 0.5 * cm;
-      thickness += thick1;
+    if (thickness < z2 && thickness + curThickness < z2){
+      r1 += curSpacing;
+      r2 = r1 + curSpacing;
+      
+      thickness += curThickness;
+    
     } else {
+      
+      // Boundary between cone cutouts
       if (!isSwitched){
-        G4cout << "thickness = " << thickness << G4endl;
-        r1 += 0.5 * cm;
+        r1 += curSpacing;
+        curThickness = curSpacing/std::tan(shortAngle);
         isSwitched = true;
       } else {
-        r1 += 0.85 * cm;
+        r1 += curSpacing;
       }
-      r2 = r1 + 0.85 * cm;
-      thickness += thick2;
+      
+      r2 = r1 + curSpacing;
+      
+      thickness += curThickness;
     }
     
-    if (r2 > rOuter || thickness > z3){
-      break;
+    curSublayer++;
+    
+    // End if volume too thick, radius too large, or exceeded num of superlayers
+    if (thickness > z3  || r2 > rOuter
+                        || (curSuperlayer == numSuperlayers-1 
+                                && curSublayer == numSublayers[curSuperlayer])){
+        break;
     }
     
+    // Switch superlayers                      
+    if (curSublayer == numSublayers[curSuperlayer]){
+      curSuperlayer++;
+      curSublayer = 0;
+      
+      curSpacing = (outerRadii[curSuperlayer]-outerRadii[curSuperlayer-1])/numSublayers[curSuperlayer];
+      
+      if (!isSwitched){
+        curThickness = curSpacing/std::tan(longAngle);
+      }else{
+        curThickness = curSpacing/std::tan(shortAngle);
+      }
+      
+    }
+                            
+                            
     layerFile << r1 << "," << r2 << "\n";
     
     G4Tubs* cylRing = new G4Tubs("CylRing", r1, r2, thickness, startAngle, spanAngle);
@@ -218,7 +264,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
       
       ringLog->SetVisAttributes(shellVisAtt); 
       
-      G4double pos = thickness + thick2;
+      G4double pos = thickness + curThickness;
       
       new G4PVPlacement(nullptr, G4ThreeVector(0, 0, pos), ringLog, "EndplateRing_Pos", worldLV, false, i, false);
       new G4PVPlacement(nullptr, G4ThreeVector(0, 0, -pos), ringLog, "EndplateRing_Neg", worldLV, false, i, false);
@@ -228,7 +274,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   layerFile.close();
   
   // Create aluminum shell objects
-  G4Tubs* outShellS = new G4Tubs("outShellS", rOuter, rOuter+thicknessShell, z3, startAngle, spanAngle);
+  G4Tubs* outShellS = new G4Tubs("outShellS", r1+curThickness, r1+curThickness+thicknessShell, thickness, startAngle, spanAngle);
   G4Tubs* inShellS = new G4Tubs("inShellS", rInner-thicknessShell, rInner, z1, startAngle, spanAngle);
   
   // Place volume with material in world
@@ -249,9 +295,12 @@ G4VPhysicalVolume* DetectorConstruction::Construct(){
   // ___________________ Visualization ____________________ //
   
   shellVisAtt->SetVisibility(true);
+  
   gasVisAtt->SetVisibility(true);
   shellCylLog->SetVisAttributes(shellVisAtt);
   inShellLog->SetVisAttributes(shellVisAtt);
+  
+  shellVisAtt->SetForceSolid(true);
   
   G4VisAttributes* worldVisAtts = new G4VisAttributes(G4Color(1.0, 1.0, 1.0, 0.2)); 
   worldVisAtts->SetVisibility(false);

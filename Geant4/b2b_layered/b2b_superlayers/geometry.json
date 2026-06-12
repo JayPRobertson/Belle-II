@@ -18,7 +18,6 @@
 				}
 			},
 		"dimensions": {
-			"radius_outer": 109.6,
 			"radius_inner": 16.0,
 			"full_length": 241.69,
 			"long_cone_cutout": {
@@ -43,7 +42,6 @@
 				}
 			},
 		"dimensions": {
-			"full_length": 241.69,
 			"thickness": 0.1
 			}
 		},
@@ -53,7 +51,6 @@
 			"same_as_shell": true
 			},
 		"dimensions": {
-			"radius_outer": 109.6,
 			"thickness": 0.5
 			}
 		},
@@ -62,5 +59,58 @@
 		"x": 0.0,
 		"y": 0.0,
 		"z": 1.5
+		},
+
+	"layers": {
+			"num_of_superlayers":9,
+			"super_layers": {
+					  "layer0":{
+							"num_sublayers":8,
+							"outer_radius":23.8
+						  },
+					  "layer1":{
+							"num_sublayers":6,
+							"outer_radius":34.8
+						  },
+					  "layer2":{
+							"num_sublayers":6,
+							"outer_radius":45.57
+						  },
+					  "layer3":{
+							"num_sublayers":6,
+							"outer_radius":56.69
+						  },
+					  "layer4":{
+							"num_sublayers":6,
+							"outer_radius":67.41
+						  },
+					  "layer5":{
+							"num_sublayers":6,
+							"outer_radius":78.53
+						  },
+					  "layer6":{
+							"num_sublayers":6,
+							"outer_radius":89.25
+						  },
+					  "layer7":{
+							"num_sublayers":6,
+							"outer_radius":100.37
+						  },
+					  "layer8":{
+							"num_sublayers":6,
+							"outer_radius":111.14
+						  }
+					}
 		}
 }
+
+
+
+
+
+
+
+
+
+
+
